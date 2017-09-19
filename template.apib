@@ -1,0 +1,263 @@
+FORMAT: 1A
+
+# ProjectName API Specification
+
+## Introduction
+
+### REST
+
+API design is REST based.
+
+### Convetions
+
+_Date Format Convention_  
+_Other conventions if exist_
+
+## Endpoints
+
+#### Staging Environment
+
+```
+https://projecturl.staging/api/
+```
+
+#### Production Environment
+
+```
+https://projecturl.production/api/
+```
+
+## Versioning
+
+Current API version is `v1`.  
+Version of the API should be explicitly set in the URL.
+
+Example:
+```
+/v1/users/
+```
+
+## Localization
+
+Set `Accept-Language` header for receiving localized strings in response.  
+Default language is English.
+
+## Authentication
+
+_Describe how authentication works in general._
+
+## Errors
+
+`4xx` errors are client errors, so the only way to handle them is to validate input data and repeat request.  
+`5xx` errors are server errors and should be handled with repeated requests.
+
+Error format:
+```js
+{
+    # error code, string
+    "error": "auth_facebook_token_invalid",
+
+    # localized user-friendly message
+    "message": "Hey! I am localized and useful message!",
+
+    # additional details
+    "misc": "Some error details if needed"
+}
+```
+
+## Pagination
+
+Cursor pagination is used for collections methods. This means that every paginated request should have `ID` of current resource in `GET` array. If `ID` is provided, resources are sliced after it, if no - resources getting from the beginning. If method supports pagination, it always returns response in such format:
+```js
+{
+    “pagination”: {
+        “next”: <next_page_url>,
+        “prev”: <prev_page_url>,
+    },
+    “results”: [
+        <list of models>
+    ]
+}
+```
+
+To specify cursor, `?cursor=` should be added to query, but the easier way is to follow `next` or `prev` urls.
+If there is no next or previous page available, it’s code will be `null` in response.  
+Results by default are paginated by 10 models. To change it, supply `?limit=` query parameter with required value, but no more then 50.  
+Pagination stacks with searching and ordering options in this order: search => ordering => pagination
+
+Example:
+```js
+GET /users?cursor=1d4737b998d64a0894a322ff7cf39a29&limit=11
+```
+
+## Ordering
+
+Ascending order has no prefix before parameter name.  
+Descending order has `-` (minus) prefix before parameter name.  
+For multiple fields ordering, they should be specified in comma-separated list, order makes sense.  
+For nested ordering use `__` (double underscore) as separator.  
+
+Examples:
+```js
+# ascending order
+GET /posts/?ordering=created_at
+
+# descending order
+GET /posts/?ordering=-created_at
+
+# ordered by user’s username, then by created_at in descending order
+GET /posts/?ordering=owner__username,-created_at (
+```
+Supported fields for ordering noted at particular methods definition.
+
+## Filtering
+
+Supported fields for filtering noted at particular methods definition.
+
+Example:
+```js
+GET /users/?search=sergey
+```
+## Response codes
+
+| Code     | Description                                                                                                                                                          |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 200      | Everything is ok                                                                                                                                                     |
+| 201      | Resource created successfully                                                                                                                                        |
+| 204      | Resource deleted successfully                                                                                                                                        |
+| 400      | Incorrect data provided                                                                                                                                              |
+| 401      | Authorization is not provided or contains wrong (or expired) token. Re-authorization required.      |
+| 403      | Resource is forbidden for user                                                                                                                                       |
+| 404      | Resource not found                                                                                                                                                   |
+| 405      | Method not allowed                                                                                                                                                   |
+| 500      | Unhandled server error.                                                                                                                                              |
+| 503      | Service is down                                                                                                                                                      |
+| 504      | Gateway timeout. Service is overloaded or some other problem exists.                                                                                                 |
+
+# Group Use Cases
+
+_Some cases can involve more that just one API method, describe such cases here._
+
+
+# Group Authentication
+
+## Social Networks [/authenticate/]
+
+### Authentication via Facebook [POST]
+
+#### Body Parameters:
+* `facebook_token` — token obtained from Facebook
+
++ Request (application/json)
+    + Headers
+
+            Accept-Language: en-gb
+
+    + Body
+
+            { "facebook_token" : "EAACzJrZC2Ja4B23423dTsGGYyMQZCmOZCjXW7VDDDH65BJ6oBIpg4lpYouR9MWYzZCsEKJvCTDIJMy4ewZCwPyufEstDoj0v5ZB8gAl2oqGyZAqI7ex7iEtkQ5wTfXso1F1nbjpMpMbd5LzRzm8zNP1ZABoW1pl8PiAHDZBE3cAZDZD" }
+
++ Response 200 (application/json)
+
+    + Body
+
+            {
+                "access_token" : "27e4c22bab96097sdf3234e55074ae1ff11",
+                "user" : {
+                    "id" : "8b783089-0d80-4ed8-896e-b78964abef85",
+                    "image_url" : "http://previews.123rf.com/images/kritchanut/kritchanut1406/kritchanut140600093/29213195-Male-silhouette-avatar-profile-picture-Stock-Vector.jpg",
+                    "type" : "regular",
+                    "username" : "John Doe",
+                }
+            }
+
+# Group Users & Profiles
+
+## Users collection [/users/]
+
+### Get users [GET]
+
+#### Ordering fields
+* `username` (default)
+* `votes_count`
+* `followers_count`
+
+#### Search fields
+* `username`
+
++ Request (application/json)
+    + Headers
+
+            Authorization: Token 27e4c22bab96597c0b6cbcb0af4e55074ae1ff11
+            Accept-Language: en-gb
+
+
++ Response 200 (application/json)
+    + Body
+
+             {
+                 "pagination": {
+                     "next": null,
+                     "previous": null
+                 },
+                 "results": [
+                      {
+                          "id": "8b783089-3142-4ed8-896e-b78964abef85",
+                          "username": "john.doe",
+                          "is_username_set": true,
+                          "image_url": "https://scontent.xx.fbcdn.net/v/t1.0-1/s320x320/52091_10203905252368631_281704847006585_n.jpg?oh=7261785ceb5d4b10a5a9c6eef21b53f&oe=58F075B1",
+                          "facebook_id": "123121231231",
+                          "google_id" : "10208036482846485",
+                          "type": "regular",
+                          "followed_by_me": false,
+                          "followers_count": 2,
+                          "following_count": 20,
+                          "posts_count": 0
+                      },
+                      {
+                          "id": "083dfec3-3a0e-40fe-bcfa-0174f961a12d",
+                          "username": "john.doe.1",
+                          "is_username_set": true,
+                          "image_url": "https://scontent.xx.fbcdn.net/v/t1.0-1/p320x320/3123121_12315124185755_83322151572584_n.jpg?oh=16f121567814322918c6d99ec3e1a5&oe=58AFE60D",
+                          "facebook_id": "234121242123",
+                          "google_id" : "10208036482846485",
+                          "type": "regular",
+                          "followed_by_me": false,
+                          "followers_count": 7,
+                          "following_count": 0,
+                          "posts_count": 0
+                      }
+                 ]
+             }
+
+## Users devices collection [/users/{id}/devices/]
+
+### Get user devices [GET]
+
+#### Ordering fields
+* `created_at` (default)
+
+#### Search fields
+* `device_name`
+
++ Request (application/json)
+    + Headers
+
+            Authorization: Token 27e4c22bab96597c0b6cbcb0af4e55074ae1ff11
+            Accept-Language: en-gb
+
+
++ Response 200 (application/json)
+    + Body
+
+             {
+                 "pagination": {
+                     "next": null,
+                     "previous": null
+                 },
+                 "results": [
+                      {
+                          ...
+                      }
+                 ]
+             }
